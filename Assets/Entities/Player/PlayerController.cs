@@ -13,7 +13,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField] Transform _positionAttack;
     [SerializeField] float _rangeAttack;
     [SerializeField] float _coldDownAttack;
-    
+    bool _hitWall;
+
     [Header ("Layers")]
     [SerializeField] LayerMask _layerJump;
     
@@ -27,7 +28,8 @@ public class PlayerController : MonoBehaviour
     {
         Normal,
         Attack,
-        SpecialAttack
+        SpecialAttack,
+        Parry
     }
 
     [SerializeField]States _state;
@@ -42,6 +44,7 @@ public class PlayerController : MonoBehaviour
     void Start()
     {
         _state = States.Normal;
+        _hitWall = false;
     }
 
     // Update is called once per frame
@@ -55,21 +58,22 @@ public class PlayerController : MonoBehaviour
                 
                 Jump();
 
-                if (GroundCheck() && Input.GetKeyDown(KeyCode.J)) Attack();
+                if ( Input.GetKeyDown(KeyCode.J)) Attack();
 
                     break;
-            case States.Attack:
-                StartCoroutine("FinishAnimation");
+            case States.Attack:               
                 break;
             case States.SpecialAttack:
-                StartCoroutine("FinishAnimation");
+                break;
+            case States.Parry:
                 break;
         }
 
 
+        HandleAnimations();
 
 
-        
+
     }
     void FixedUpdate()
     {
@@ -87,31 +91,56 @@ public class PlayerController : MonoBehaviour
 
     void Attack()
     {
-        Collider2D[] _colliders = Physics2D.OverlapCircleAll(_positionAttack.position, _rangeAttack);
+        if (GroundCheck()) _hitWall = false;
 
+        Collider2D[] _colliders = Physics2D.OverlapCircleAll(_positionAttack.position, _rangeAttack);
+     
         foreach(Collider2D _target in _colliders)
         {
             if(_target.CompareTag("Enemy"))
             {
-                //Realizar Accion
-                _state=States.Attack;
+                //Realizar Accion               
                 
             }
 
             if (_target.CompareTag("Wall") && !GroundCheck())
             {
                 //Realizar Accion
+                _hitWall = true;
                 RestartVerticalVelocity();
                 StarJump();
             }
 
 
+
         }
+
+        if (!_hitWall) 
+        {
+            //_animator.CrossFade("attack", 0.0001f);
+            _state = States.Attack;
+           
+        }
+
+        
     }
 
     void SpecialAttack()
     {
 
+    }
+
+    void Parry()
+    {
+        if(Input.GetKey(KeyCode.I))
+        {
+            _state = States.Parry;
+            _animator.CrossFade("Parry", 0.0001f);
+        }
+        else
+        {
+            _state = States.Normal;
+        }
     }
 
     void ScaleDirection()
@@ -144,7 +173,11 @@ public class PlayerController : MonoBehaviour
     void Jump()
     {
         if (Input.GetKeyDown(KeyCode.W) && GroundCheck())
+        {
             StarJump();
+            //_animator.CrossFade("jump", 0.0001f);
+        }
+            
     }
 
     bool GroundCheck()
@@ -156,7 +189,10 @@ public class PlayerController : MonoBehaviour
 
     void RestartVerticalVelocity() => _rigidbody.velocity = new Vector2(_rigidbody.velocity.x, 0f);
 
-    IEnumerator FinishAnimation()
+    public void ResetAttack() => _state = States.Normal;
+
+
+    IEnumerator ResetWallJump()
     {
         yield return new WaitForSeconds(_animator.GetCurrentAnimatorStateInfo(0).length);
 
@@ -164,6 +200,20 @@ public class PlayerController : MonoBehaviour
 
     }
 
+    void HandleAnimations()
+    {
+
+        // --- Si está en el suelo ---
+        float x = Input.GetAxisRaw("Horizontal");
+        if(GroundCheck())
+        {
+            /*if (Mathf.Abs(x) > 0.1f)
+                _animator.CrossFade("move", 0.1f);
+            else
+                _animator.CrossFade("idle", 0.1f);*/
+        }
+       
+    }
 
     private void OnDrawGizmos()
     {
