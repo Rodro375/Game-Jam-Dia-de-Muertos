@@ -15,6 +15,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float _coldDownAttack;
     bool _hitWall;
 
+    [Header("Parry")]
+    bool _parryActive;
+
     [Header ("Layers")]
     [SerializeField] LayerMask _layerJump;
     
@@ -45,6 +48,7 @@ public class PlayerController : MonoBehaviour
     {
         _state = States.Normal;
         _hitWall = false;
+        _parryActive = false;
     }
 
     // Update is called once per frame
@@ -134,11 +138,14 @@ public class PlayerController : MonoBehaviour
     {
         if(Input.GetKey(KeyCode.I))
         {
+            _parryActive = true;
             _state = States.Parry;
             _animator.CrossFade("Parry", 0.0001f);
+            
         }
         else
         {
+            _parryActive = false;
             _state = States.Normal;
         }
     }
@@ -219,5 +226,31 @@ public class PlayerController : MonoBehaviour
     {
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(_positionAttack.position, _rangeAttack);
+    }
+
+
+    private void OnTriggerEnter2D(Collider2D collision)
+    {
+        if (collision.CompareTag("proyectil") )
+        {
+            //Realizar accion
+        }
+
+        if (collision.CompareTag("ataque enemigo") )
+        {
+            //Realizar accion
+        }
+
+        if (collision.CompareTag("proyectil") && _parryActive)
+        {
+            //Realizar accion
+        }
+
+        if (collision.CompareTag("ataque enemigo") && _parryActive)
+        {
+            //Realizar accion
+        }
+
+
     }
 }
