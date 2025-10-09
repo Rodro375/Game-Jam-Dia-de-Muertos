@@ -18,9 +18,32 @@ public class PlayerController : MonoBehaviour
     [Header("Parry")]
     bool _parryActive;
 
-    [Header ("Layers")]
-    [SerializeField] LayerMask _layerJump;
+
+    [Header ("HandleWall")]
+    [SerializeField] private Transform wallCheck;
+    [SerializeField] private float wallCheckDistance;
     
+    private bool isTouchingWall;
+    private bool isWallSliding;
+
+    [SerializeField] private float wallSlideSpeed;
+    [SerializeField] private float wallJumpForce;
+
+    private bool isWallJumping;
+    private float wallJumpTime = 0.2f;
+
+    [Header("Dash")]
+    [SerializeField] private float dashForce = 12f;
+    [SerializeField] private float dashDuration = 0.2f;
+    [SerializeField] private float dashCooldown = 1f;
+    private bool canDash = true;
+    private bool isDashing = false;
+
+
+    [Header("Layers")]
+    [SerializeField] LayerMask _layerJump;
+    [SerializeField] private LayerMask wallLayer;
+
 
     //Components
     Rigidbody2D _rigidbody;
@@ -32,7 +55,8 @@ public class PlayerController : MonoBehaviour
         Normal,
         Attack,
         SpecialAttack,
-        Parry
+        Parry,
+        Dash
     }
 
     [SerializeField]States _state;
@@ -58,24 +82,33 @@ public class PlayerController : MonoBehaviour
         switch(_state)
         {
             case States.Normal:
+                
+                HandleWallSlide();
+                HandleWallJump();
+                Jump();
+                StartDash();
+
+                if ( Input.GetKeyDown(KeyCode.J) && GroundCheck()) Attack();
 
                 
-                Jump();
-
-                if ( Input.GetKeyDown(KeyCode.J)) Attack();
 
                     break;
+
             case States.Attack:               
                 break;
             case States.SpecialAttack:
                 break;
             case States.Parry:
+                
+                break;
+            case States.Dash:
                 break;
         }
 
-
+        Parry();
         HandleAnimations();
 
+        if (Input.GetKeyDown(KeyCode.P)) SpawnProyectile();
 
 
     }
@@ -85,8 +118,12 @@ public class PlayerController : MonoBehaviour
         {
             case States.Normal:
 
-                Movement();
+                
                 ScaleDirection();
+
+                if (!isWallJumping)
+                    Movement();
+
                 break;
         }
 
@@ -95,8 +132,9 @@ public class PlayerController : MonoBehaviour
 
     void Attack()
     {
-        if (GroundCheck()) _hitWall = false;
 
+        _state = States.Attack;
+        //_animator.CrossFade("attack", 0.0001f);
         Collider2D[] _colliders = Physics2D.OverlapCircleAll(_positionAttack.position, _rangeAttack);
      
         foreach(Collider2D _target in _colliders)
@@ -107,25 +145,7 @@ public class PlayerController : MonoBehaviour
                 
             }
 
-            if (_target.CompareTag("Wall") && !GroundCheck())
-            {
-                //Realizar Accion
-                _hitWall = true;
-                RestartVerticalVelocity();
-                StarJump();
-            }
-
-
-
         }
-
-        if (!_hitWall) 
-        {
-            //_animator.CrossFade("attack", 0.0001f);
-            _state = States.Attack;
-           
-        }
-
         
     }
 
@@ -136,14 +156,16 @@ public class PlayerController : MonoBehaviour
 
     void Parry()
     {
-        if(Input.GetKey(KeyCode.I))
+        if(Input.GetKey(KeyCode.I) && GroundCheck())
         {
+            _rigidbody.velocity = Vector2.zero;
             _parryActive = true;
             _state = States.Parry;
-            _animator.CrossFade("Parry", 0.0001f);
+            //_animator.CrossFade("Parry", 0.0001f);
             
         }
-        else
+
+        if (Input.GetKeyUp(KeyCode.I) && GroundCheck())
         {
             _parryActive = false;
             _state = States.Normal;
@@ -198,14 +220,75 @@ public class PlayerController : MonoBehaviour
 
     public void ResetAttack() => _state = States.Normal;
 
-
-    IEnumerator ResetWallJump()
+    void HandleWallSlide()
     {
-        yield return new WaitForSeconds(_animator.GetCurrentAnimatorStateInfo(0).length);
+        isTouchingWall = Physics2D.Raycast(wallCheck.position, Vector2.right * transform.localScale.x, wallCheckDistance, wallLayer);
 
+        if (isTouchingWall && !GroundCheck() && _move.x != 0)
+        {
+            isWallSliding = true;
+            _rigidbody.velocity = new Vector2(_rigidbody.velocity.x, Mathf.Clamp(_rigidbody.velocity.y, -wallSlideSpeed, float.MaxValue));
+        }
+        else
+        {
+            isWallSliding = false;
+        }
+    }
+
+    void HandleWallJump()
+    {
+        if (isWallSliding && Input.GetKeyDown(KeyCode.W))
+        {
+            isWallJumping = true;
+            Invoke(nameof(StopWallJump), wallJumpTime);
+
+            Vector2 force =Vector2.right*-transform.localScale.x;
+            _rigidbody.velocity = Vector2.zero;
+            _rigidbody.AddForce(force * wallJumpForce, ForceMode2D.Impulse);
+
+            StarJump();
+        }
+    }
+
+    void StopWallJump()
+    {
+        isWallJumping = false;
+    }
+
+    void StartDash()
+    {
+        if (Input.GetKeyDown(KeyCode.Space) && canDash)
+        {
+            StartCoroutine(Dash());
+        }
+    }
+
+    IEnumerator Dash()
+    {
+        canDash = false;
+       
+        _state = States.Dash;
+
+        
+        float originalGravity = _rigidbody.gravityScale;
+        _rigidbody.gravityScale = 0;
+
+        _rigidbody.velocity = Vector2.zero;
+
+        _rigidbody.AddForce(Vector2.right * transform.localScale.x * dashForce, ForceMode2D.Impulse);
+
+        //_animator.CrossFade("dash", 0.05f);
+
+        yield return new WaitForSeconds(dashDuration);
+
+        _rigidbody.gravityScale = originalGravity;
         _state = States.Normal;
 
+        yield return new WaitForSeconds(dashCooldown);
+        canDash = true;
     }
+
+    void SpawnProyectile() => Instantiate(Resources.Load("proyectil"), transform.position + Vector3.right * 9f, Quaternion.identity);
 
     void HandleAnimations()
     {
@@ -236,21 +319,22 @@ public class PlayerController : MonoBehaviour
             //Realizar accion
         }
 
-        if (collision.CompareTag("ataque enemigo") )
+
+
+        if (collision.CompareTag("proyectil") )
         {
-            //Realizar accion
+            if (_parryActive)
+            {
+                collision.GetComponent<TestProyectile>().SetSpeed();
+                Debug.Log("enmter");
+            }
+            
         }
 
-        if (collision.CompareTag("proyectil") && _parryActive)
-        {
-            //Realizar accion
-        }
-
-        if (collision.CompareTag("ataque enemigo") && _parryActive)
-        {
-            //Realizar accion
-        }
 
 
     }
+
+
+   
 }
