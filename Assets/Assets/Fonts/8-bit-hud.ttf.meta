@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 6e661addf65bd1c4082d1e996c2b4d23
+guid: d3f8b6eb4e6cc18459442f55b63bc96a
 TrueTypeFontImporter:
   externalObjects: {}
   serializedVersion: 4
@@ -9,7 +9,7 @@ TrueTypeFontImporter:
   characterPadding: 1
   includeFontData: 1
   fontNames:
-  - ArcadeClassic
+  - 8-bit HUD
   fallbackFontReferences: []
   customCharacters: 
   fontRenderingMode: 0
