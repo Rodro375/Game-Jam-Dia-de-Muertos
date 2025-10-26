@@ -6,6 +6,15 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/UI/Main Menu/Main Menu.unity
+    path: Assets/Stages/Start Area/StartArea.unity
+    guid: f42cfcc35becefc48b3a6ac3ab2c3413
+  - enabled: 1
+    path: Assets/UI/Main Menu/Main Menu2.unity
+    guid: 270c0c35cf912c84bba8e922839716c8
+  - enabled: 1
+    path: Assets/Stages/Pantheons/Phanteon1.unity
+    guid: b99c5ef4ddbd7334c8188b4a70c9a871
+  - enabled: 1
+    path: Assets/UI/Main Menu/Main Menu1.unity
     guid: 92d70bc488d457c409c0cd3ba38fc5d0
   m_configObjects: {}
