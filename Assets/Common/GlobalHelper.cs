@@ -2,9 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public interface IInteractable
+public static class GlobalHelper
 {
-    void Interact();
-    bool CanInteract();
 
 }
