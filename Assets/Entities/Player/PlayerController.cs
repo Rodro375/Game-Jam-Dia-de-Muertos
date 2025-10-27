@@ -6,14 +6,21 @@ public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
     [SerializeField]float _speed;
-    [SerializeField]float _jumpForce;
     Vector3 _move;
+    [Header ("Jump")]
+    [SerializeField]float _jumpForce;
+    [SerializeField]int _jumpCount;
 
     [Header("Attack")]
     [SerializeField] Transform _positionAttack;
     [SerializeField] float _rangeAttack;
     [SerializeField] float _coldDownAttack;
     bool _hitWall;
+
+    [Header("SpecialAttack")]
+    [SerializeField] float _damageSpecialAttack;
+    float _chargeDamage;
+
 
     [Header("Parry")]
     bool _parryActive;
@@ -49,6 +56,7 @@ public class PlayerController : MonoBehaviour
     Rigidbody2D _rigidbody;
     CapsuleCollider2D _capsuleCollider;
     Animator _animator;
+    UIPlayer _uiplayer;
 
     enum States
     {
@@ -70,9 +78,12 @@ public class PlayerController : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        _uiplayer = GetComponent<UIPlayer>();
+
         _state = States.Normal;
         _hitWall = false;
         _parryActive = false;
+        _jumpCount = 1;
     }
 
     // Update is called once per frame
@@ -82,13 +93,19 @@ public class PlayerController : MonoBehaviour
         switch(_state)
         {
             case States.Normal:
+
+                SpecialAttack();
+                SpecialAttackDamage();
                 
+
                 HandleWallSlide();
                 HandleWallJump();
                 Jump();
                 StartDash();
+                ResetJumpCount();
+                ResetUICantJump();
 
-                if ( Input.GetKeyDown(KeyCode.J) && GroundCheck()) Attack();
+                if (Input.GetKeyDown(KeyCode.J)) { RestartHorizontalVelocity();  Attack(); }
 
                 
 
@@ -99,7 +116,7 @@ public class PlayerController : MonoBehaviour
             case States.SpecialAttack:
                 break;
             case States.Parry:
-                
+                RestartHorizontalVelocity();
                 break;
             case States.Dash:
                 break;
@@ -107,6 +124,7 @@ public class PlayerController : MonoBehaviour
 
         Parry();
         HandleAnimations();
+        
 
         if (Input.GetKeyDown(KeyCode.P)) SpawnProyectile();
 
@@ -151,8 +169,40 @@ public class PlayerController : MonoBehaviour
 
     void SpecialAttack()
     {
-
+        if (Input.GetKey(KeyCode.M))
+        {
+            _chargeDamage += Time.deltaTime;
+        }
     }
+
+    void SpecialAttackDamage()
+    {
+
+        if (Input.GetKeyUp(KeyCode.M))
+        {
+            //Spawnea Bala y se le asigna esa cantidad de daño cargada al proyectil
+
+            GameObject _bala =(GameObject) Instantiate(Resources.Load("BalaPlayer"),transform.position,Quaternion.identity);
+
+            _bala.GetComponent<Bala_Player>().SetDamage(_chargeDamage);
+            
+            _chargeDamage = 0;
+        }
+    }
+
+    void ResetJumpCount()
+    {
+        if(GroundCheck() || (isTouchingWall && _move.x != 0))
+            _jumpCount = 1;
+    }
+
+    void ResetUICantJump() 
+    {
+        if (GroundCheck() && _rigidbody.velocity.y == 0)
+            _uiplayer.SetCantJump(2);
+    }
+
+  
 
     void Parry()
     {
@@ -197,13 +247,17 @@ public class PlayerController : MonoBehaviour
     void StarJump()
     {
         _rigidbody.AddForce(Vector2.up*_jumpForce, ForceMode2D.Impulse);
+        
     }
 
     void Jump()
     {
-        if (Input.GetKeyDown(KeyCode.W) && GroundCheck())
+        if (Input.GetKeyDown(KeyCode.W) && _jumpCount == 1)
         {
+            RestartVerticalVelocity();
             StarJump();
+            _jumpCount--;
+            _uiplayer.CantJump(1);
             //_animator.CrossFade("jump", 0.0001f);
         }
             
@@ -211,12 +265,17 @@ public class PlayerController : MonoBehaviour
 
     bool GroundCheck()
     {
-        RaycastHit2D _ray = Physics2D.Raycast(transform.position, Vector2.down, 1.1f, _layerJump);
+        RaycastHit2D _ray = Physics2D.Raycast(transform.position, Vector2.down, 1.05f, _layerJump);
 
         return _ray.collider;
     }
 
+    
+
     void RestartVerticalVelocity() => _rigidbody.velocity = new Vector2(_rigidbody.velocity.x, 0f);
+    void RestartHorizontalVelocity() => _rigidbody.velocity = new Vector2(0f,_rigidbody.velocity.y);
+
+
 
     public void ResetAttack() => _state = States.Normal;
 
