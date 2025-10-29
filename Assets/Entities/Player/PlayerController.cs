@@ -10,6 +10,7 @@ public class PlayerController : MonoBehaviour
     [Header ("Jump")]
     [SerializeField]float _jumpForce;
     [SerializeField]int _jumpCount;
+    [SerializeField] float _raydistance;
 
     [Header("Attack")]
     [SerializeField] Transform _positionAttack;
@@ -103,7 +104,7 @@ public class PlayerController : MonoBehaviour
                 Jump();
                 StartDash();
                 ResetJumpCount();
-                ResetUICantJump();
+               // ResetUICantJump();
 
                 if (Input.GetKeyDown(KeyCode.J)) { RestartHorizontalVelocity();  Attack(); }
 
@@ -257,7 +258,7 @@ public class PlayerController : MonoBehaviour
             RestartVerticalVelocity();
             StarJump();
             _jumpCount--;
-            _uiplayer.CantJump(1);
+            //_uiplayer.CantJump(1);
             //_animator.CrossFade("jump", 0.0001f);
         }
             
@@ -265,7 +266,7 @@ public class PlayerController : MonoBehaviour
 
     bool GroundCheck()
     {
-        RaycastHit2D _ray = Physics2D.Raycast(transform.position, Vector2.down, 1.05f, _layerJump);
+        RaycastHit2D _ray = Physics2D.Raycast(transform.position, Vector2.down, 0.5f, _layerJump);
 
         return _ray.collider;
     }
@@ -368,6 +369,9 @@ public class PlayerController : MonoBehaviour
     {
         Gizmos.color = Color.red;
         Gizmos.DrawWireSphere(_positionAttack.position, _rangeAttack);
+
+
+        Gizmos.DrawLine(transform.position, transform.position + Vector3.down *_raydistance);
     }
 
 
