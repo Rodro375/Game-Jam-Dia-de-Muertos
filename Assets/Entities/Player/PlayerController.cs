@@ -11,6 +11,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField]float _jumpForce;
     [SerializeField]int _jumpCount;
     [SerializeField] float _raydistance;
+    bool _isJumping;
 
     [Header("Attack")]
     [SerializeField] Transform _positionAttack;
@@ -20,6 +21,7 @@ public class PlayerController : MonoBehaviour
 
     [Header("SpecialAttack")]
     [SerializeField] float _damageSpecialAttack;
+    bool _startCharge;
     float _chargeDamage;
 
 
@@ -65,23 +67,27 @@ public class PlayerController : MonoBehaviour
         Attack,
         SpecialAttack,
         Parry,
-        Dash
+        Dash,
+        charge
     }
 
     [SerializeField]States _state;
 
     private void Awake()
     {
+        _animator = GetComponent<Animator>();
         _rigidbody = GetComponent<Rigidbody2D>();
         _capsuleCollider = GetComponent<CapsuleCollider2D>();
+        _uiplayer = GetComponent<UIPlayer>();
     }
 
     // Start is called before the first frame update
     void Start()
     {
-        _uiplayer = GetComponent<UIPlayer>();
+        _isJumping = false;
+        _startCharge = false;
 
-        _state = States.Normal;
+         _state = States.Normal;
         _hitWall = false;
         _parryActive = false;
         _jumpCount = 1;
@@ -94,9 +100,9 @@ public class PlayerController : MonoBehaviour
         switch(_state)
         {
             case States.Normal:
-
+                HandleAnimations();
                 SpecialAttack();
-                SpecialAttackDamage();
+                
                 
 
                 HandleWallSlide();
@@ -121,10 +127,14 @@ public class PlayerController : MonoBehaviour
                 break;
             case States.Dash:
                 break;
+            case States.charge:
+                StartChargeAttack();
+                SpecialAttackDamage();
+                break;
         }
 
         Parry();
-        HandleAnimations();
+        
         
 
         if (Input.GetKeyDown(KeyCode.P)) SpawnProyectile();
@@ -153,7 +163,7 @@ public class PlayerController : MonoBehaviour
     {
 
         _state = States.Attack;
-        //_animator.CrossFade("attack", 0.0001f);
+        _animator.CrossFade("attack", 0.0001f);
         Collider2D[] _colliders = Physics2D.OverlapCircleAll(_positionAttack.position, _rangeAttack);
      
         foreach(Collider2D _target in _colliders)
@@ -168,12 +178,20 @@ public class PlayerController : MonoBehaviour
         
     }
 
+    public void BackToNormal() => _state = States.Normal;
+
     void SpecialAttack()
     {
         if (Input.GetKey(KeyCode.M))
         {
-            _chargeDamage += Time.deltaTime;
+            _startCharge = true;
+            _state = States.charge;
+            _animator.CrossFade("cargado", 0.001f);
         }
+    }
+    void StartChargeAttack()
+    {
+         _chargeDamage += Time.deltaTime;
     }
 
     void SpecialAttackDamage()
@@ -186,7 +204,8 @@ public class PlayerController : MonoBehaviour
             GameObject _bala =(GameObject) Instantiate(Resources.Load("BalaPlayer"),transform.position,Quaternion.identity);
 
             _bala.GetComponent<Bala_Player>().SetDamage(_chargeDamage);
-            
+            _state = States.Normal;
+
             _chargeDamage = 0;
         }
     }
@@ -200,7 +219,7 @@ public class PlayerController : MonoBehaviour
     void ResetUICantJump() 
     {
         if (GroundCheck() && _rigidbody.velocity.y == 0)
-            _uiplayer.SetCantJump(2);
+        { _uiplayer.SetCantJump(2); _isJumping = false; }
     }
 
   
@@ -212,7 +231,7 @@ public class PlayerController : MonoBehaviour
             _rigidbody.velocity = Vector2.zero;
             _parryActive = true;
             _state = States.Parry;
-            //_animator.CrossFade("Parry", 0.0001f);
+            _animator.CrossFade("parry", 0.0001f);
             
         }
 
@@ -253,15 +272,27 @@ public class PlayerController : MonoBehaviour
 
     void Jump()
     {
-        if (Input.GetKeyDown(KeyCode.W) && _jumpCount == 1)
+        if (Input.GetKeyDown(KeyCode.W) && GroundCheck())
+        {
+            _isJumping=true;
+            RestartVerticalVelocity();
+            StarJump();
+            _jumpCount--;
+            _uiplayer.CantJump(1);
+            _animator.CrossFade("jump", 0.0001f);
+        }
+            
+    }
+
+    void AdditionalJump()
+    {
+        if(_isJumping && _jumpCount>0 && Input.GetKeyDown(KeyCode.W))
         {
             RestartVerticalVelocity();
             StarJump();
             _jumpCount--;
             _uiplayer.CantJump(1);
-            //_animator.CrossFade("jump", 0.0001f);
         }
-            
     }
 
     bool GroundCheck()
@@ -337,7 +368,7 @@ public class PlayerController : MonoBehaviour
 
         _rigidbody.AddForce(Vector2.right * transform.localScale.x * dashForce, ForceMode2D.Impulse);
 
-        //_animator.CrossFade("dash", 0.05f);
+        _animator.CrossFade("dash", 0.05f);
 
         yield return new WaitForSeconds(dashDuration);
 
@@ -354,13 +385,13 @@ public class PlayerController : MonoBehaviour
     {
 
         // --- Si está en el suelo ---
-        float x = Input.GetAxisRaw("Horizontal");
-        if(GroundCheck())
+        if(!_isJumping && _rigidbody.velocity == Vector2.zero && GroundCheck())
         {
-            /*if (Mathf.Abs(x) > 0.1f)
-                _animator.CrossFade("move", 0.1f);
-            else
-                _animator.CrossFade("idle", 0.1f);*/
+            _animator.CrossFade("idle", 0.0001f);
+        }
+        else if(!_isJumping && _rigidbody.velocity != Vector2.zero && GroundCheck())
+        {
+            _animator.CrossFade("walk", 0.0001f);
         }
        
     }
